@@ -20,7 +20,9 @@ def handle_lead():
 
     # Отправка данных в WordPress
     try:
-        response = requests.post(WORDPRESS_WEBHOOK_URL, data=data)
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(WORDPRESS_WEBHOOK_URL, json=data, headers=headers)
+
         print(f"📤 Отправка в WordPress: {response.status_code}, {response.text}")
 
         if response.status_code == 200:
