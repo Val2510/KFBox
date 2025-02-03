@@ -15,8 +15,8 @@ def handle_lead():
     print(f"🔥 Отправка в WordPress: {data}")
 
     try:
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        response = requests.post(WORDPRESS_WEBHOOK_URL, data=data, headers=headers)
+        response = requests.post(WORDPRESS_WEBHOOK_URL, json=data)
+        response.raise_for_status()
         print(f"📩 Ответ WordPress: {response.status_code}, {response.text}")
 
         if response.status_code == 200:
