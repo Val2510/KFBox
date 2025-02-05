@@ -18,7 +18,7 @@ def submit_lead():
         phone = data.get("phone")
         prize = data.get("prize")
 
-        if not all([name, phone, prize]):
+        if not all([name, phone]):
             return jsonify({"error": "Missing required fields"}), 400
 
         # Создаем новую запись в WordPress
