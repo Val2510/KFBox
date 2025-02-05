@@ -1,3 +1,4 @@
+from urllib import response
 from flask import Flask, request, jsonify
 import requests
 
@@ -32,12 +33,8 @@ def submit_lead():
         }
 
         # Отправляем запрос в WordPress
-        response = requests.post(
-            WP_API_ENDPOINT,
-            json=wp_post_data,
-            auth=(WP_USERNAME, WP_PASSWORD),
-            headers={"Content-Type": "application/json"}
-        )
+        requests.post("http://127.0.0.1:5000/submit_lead", json=wp_post_data, auth=(WP_USERNAME, WP_PASSWORD))
+
 
         if response.status_code == 201:
             return jsonify({"message": "Lead successfully created"}), 201
