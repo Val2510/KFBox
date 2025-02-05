@@ -1,59 +1,52 @@
-import os
-import requests
 from flask import Flask, request, jsonify
+import requests
 
 app = Flask(__name__)
 
-# URL для отправки лида в WordPress
-WORDPRESS_WEBHOOK_URL = "https://caesarboxing.ru/wp-admin/admin-ajax.php?action=handle_wheel_lead"
+# Настройки WordPress API
+WP_SITE_URL = "https://caesarboxing.ru/"
+WP_API_ENDPOINT = f"{WP_SITE_URL}/wp-json/wp/v2/leads"  # URL для кастомного типа записей
+WP_USERNAME = "boxing79admin"
+WP_PASSWORD = "#fNb)FEInTe9yN7Cqs"  # Используйте Application Passwords в WordPress
 
-# Главная страница (проверка сервера)
-@app.route('/', methods=['GET'])
-def home():
-    return "Flask-сервер запущен и готов принимать запросы", 200
-
-# Обработчик для получения лида
-@app.route("/webhook", methods=["POST"])
-def handle_lead():
-    data = request.get_json()  # Читаем JSON-данные из запроса
-
-    # Проверка, что все обязательные поля заполнены
-    required_fields = ["name", "phone", "prize"]
-    missing_fields = [field for field in required_fields if field not in data or not data[field]]
-
-    if missing_fields:
-        return jsonify({
-            "success": False,
-            "message": f"Отсутствуют обязательные поля: {', '.join(missing_fields)}"
-        }), 400
-
-    print(f"📩 Получены данные лида: {data}")
-
+@app.route('/submit_lead', methods=['POST'])
+def submit_lead():
     try:
+        # Получаем данные из запроса
+        data = request.json
+        name = data.get("name")
+        phone = data.get("phone")
+        prize = data.get("prize")
+
+        if not all([name, phone, prize]):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # Создаем новую запись в WordPress
+        wp_post_data = {
+            "title": name,  # Имя лида будет заголовком
+            "status": "publish",  # Можно сменить на "draft", если не хотите публиковать сразу
+            "meta": {
+                "phone": phone,
+                "prize": prize
+            }
+        }
+
         # Отправляем запрос в WordPress
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        response = requests.post(WORDPRESS_WEBHOOK_URL, data=data, headers=headers)
-        response_json = response.json()  # Пробуем обработать ответ как JSON
+        response = requests.post(
+            WP_API_ENDPOINT,
+            json=wp_post_data,
+            auth=(WP_USERNAME, WP_PASSWORD),
+            headers={"Content-Type": "application/json"}
+        )
 
-        print(f"✅ Ответ WordPress: {response.status_code}, {response.text}")
-
-        if response.status_code == 200 and response_json.get("success"):
-            return jsonify({"success": True, "message": "Лид успешно отправлен в WordPress"})
+        if response.status_code == 201:
+            return jsonify({"message": "Lead successfully created"}), 201
         else:
-            return jsonify({
-                "success": False,
-                "message": f"Ошибка при отправке в WordPress: {response_json.get('message', 'Неизвестная ошибка')}"
-            }), 500
+            return jsonify({"error": "Failed to create lead", "details": response.json()}), response.status_code
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Ошибка запроса к WordPress: {e}")
-        return jsonify({"success": False, "message": "Ошибка при соединении с WordPress"}), 500
-
-    except ValueError:
-        print(f"❌ Ошибка парсинга ответа от WordPress: {response.text}")
-        return jsonify({"success": False, "message": "Некорректный ответ от WordPress"}), 500
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+if __name__ == '__main__':
+    app.run(debug=True)
 
 
